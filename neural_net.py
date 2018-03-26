@@ -1,5 +1,4 @@
 import tensorflow as tf
-from keras.layers import UpSampling2D
 
 def Conv2D(x, filters, kernel_size, stride):
 
@@ -96,7 +95,7 @@ class NeuralNet(object):
         return self.session.run([self.prediction], {self.x: x,
                                 self.dropout_rate: 0})[0]
 
-    def temp(self, x, dropout_rate):
+    def test(self, x, dropout_rate):
 
         conv1 = Conv2D(x, 1, 3, 1)
         conv1 = tf.layers.dropout(conv1, rate=dropout_rate)

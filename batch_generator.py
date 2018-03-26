@@ -8,7 +8,7 @@ from skimage.transform import resize
 
 class BatchGenerator(object):
 
-    def __init__(self, height, width, channels, data_dir_train, data_dir_test):
+    def __init__(self, height, width, channels, data_dir_train, data_dir_test, submission_run):
 
         self.height = height
         self.width = width
@@ -16,8 +16,12 @@ class BatchGenerator(object):
 
         self.x_train, self.y_train = self.read_train_data(data_dir_train)
         self.shuffle()
-        self.x_val, self.y_val = self.x_train[:100], self.y_train[:100]
-        self.x_train, self.y_train = self.x_train[100:], self.y_train[100:]
+
+        if submission_run:
+           self.x_val, self.y_val = self.x_train, self.y_train
+        else:
+            self.x_val, self.y_val = self.x_train[:100], self.y_train[:100]
+            self.x_train, self.y_train = self.x_train[100:], self.y_train[100:]
 
         self.x_test = self.read_test_data(data_dir_test)
 

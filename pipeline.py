@@ -6,9 +6,19 @@ import pandas as pd
 
 from neural_net import NeuralNet
 from batch_generator import BatchGenerator
-import tensorflow as tf
 
-batchgen = BatchGenerator(128, 128, 3, 'stage1_train/', 'stage1_test/')
+
+###########################
+# Training
+###########################
+
+
+batchgen = BatchGenerator(height=128,
+                          width=128,
+                          channels=3,
+                          data_dir_train='stage1_train/',
+                          data_dir_test='stage1_test/',
+                          submission_run=False)
 
 x_train = batchgen.x_train
 x_val = batchgen.x_val
@@ -20,9 +30,9 @@ print(x_test.shape)
 
 model = NeuralNet(128, 128, batchgen)
 
-#model.load_weights('/home/sander/kaggle/models/neural_net400.ckpt')
+#model.load_weights('/home/sander/kaggle/models/neural_net500.ckpt')
 
-loss_list, val_loss_list = model.train(num_steps=1000,
+loss_list, val_loss_list = model.train(num_steps=2000,
              batch_size=32,
              dropout_rate=0,
              lr=.0001,
@@ -40,32 +50,33 @@ plt.show()
 
 x_val, y_val = batchgen.generate_val_data()
 val_preds = model.predict(x_val)
-n=1
+index = 86
 
-plt.imshow(x_val[n].reshape(128, 128, 3))
-plt.imshow(y_val[n].reshape(128, 128))
-plt.imshow(val_preds[n].reshape(128, 128), cmap='gray')
-plt.imshow(np.round(val_preds[n].reshape(128, 128)), cmap='gray')
-
-
-def jaccard_coef(y_true, y_pred, smooth = 1e-12):
-
-    intersection = np.sum(y_true * y_pred, axis=[0, -1, -2])
-    sum_ = np.sum(y_true + y_pred, axis=[0, -1, -2])
-
-    jac = (intersection + smooth) / (sum_ - intersection + smooth)
-
-    return np.mean(jac)
+plt.imshow(x_val[index].reshape(128, 128, 3))
+plt.imshow(y_val[index].reshape(128, 128))
+plt.imshow(val_preds[index].reshape(128, 128), cmap='gray')
+plt.imshow(np.round(val_preds[index].reshape(128, 128)), cmap='gray')
 
 
-def jaccard_coef_int(y_true, y_pred, smooth = 1e-12):
+def IOU(x, y):
 
-    y_pred_pos = tf.round(tf.clip(y_pred, 0, 1))
+    sum_array = np.round(x+y)
+    intersection = len(sum_array[sum_array == 2])
+    union = intersection + len(sum_array[sum_array == 1])
 
-    intersection = tf.sum(y_true * y_pred_pos, axis=[0, -1, -2])
-    sum_ = tf.sum(y_true + y_pred, axis=[0, -1, -2])
-    jac = (intersection + smooth) / (sum_ - intersection + smooth)
-    return tf.mean(jac)
+    if union > 0:
+        return intersection/union
+    else:
+        return 0
+
+IOU_list = []
+for index, pred in enumerate(val_preds):
+    IOU_score = IOU(pred, y_val[index])
+    print(index, IOU_score)
+    IOU_list.append(IOU_score)
+IOU_array = np.array(IOU_list)
+
+print(np.mean(IOU_array))
 
 ###########################
 # Submission
