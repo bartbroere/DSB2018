@@ -12,13 +12,14 @@ from batch_generator import BatchGenerator
 # Training
 ###########################
 
+SIZE = 256
 
-batchgen = BatchGenerator(height=128,
-                          width=128,
+batchgen = BatchGenerator(height=SIZE,
+                          width=SIZE,
                           channels=3,
                           data_dir_train='stage1_train/',
                           data_dir_test='stage1_test/',
-                          submission_run=False)
+                          submission_run=True)
 
 x_train = batchgen.x_train
 x_val = batchgen.x_val
@@ -28,11 +29,11 @@ print(x_train.shape)
 print(x_val.shape)
 print(x_test.shape)
 
-model = NeuralNet(128, 128, batchgen)
+model = NeuralNet(SIZE, SIZE, batchgen)
 
 #model.load_weights('/home/sander/kaggle/models/neural_net500.ckpt')
 
-loss_list, val_loss_list = model.train(num_steps=2000,
+loss_list, val_loss_list, val_iou_list = model.train(num_steps=2000,
              batch_size=32,
              dropout_rate=0,
              lr=.0001,
@@ -41,7 +42,8 @@ loss_list, val_loss_list = model.train(num_steps=2000,
 
 plt.plot(loss_list)
 plt.plot(val_loss_list)
-plt.legend(['train_loss', 'val_loss'])
+plt.plot(val_iou_list)
+plt.legend(['Train loss', 'Val loss', 'Val IOU'])
 plt.show()
 
 ###########################
@@ -50,12 +52,12 @@ plt.show()
 
 x_val, y_val = batchgen.generate_val_data()
 val_preds = model.predict(x_val)
-index = 86
+index = 1
 
-plt.imshow(x_val[index].reshape(128, 128, 3))
-plt.imshow(y_val[index].reshape(128, 128))
-plt.imshow(val_preds[index].reshape(128, 128), cmap='gray')
-plt.imshow(np.round(val_preds[index].reshape(128, 128)), cmap='gray')
+plt.imshow(x_val[index].reshape(SIZE, SIZE, 3))
+plt.imshow(y_val[index].reshape(SIZE, SIZE))
+plt.imshow(val_preds[index].reshape(SIZE, SIZE), cmap='gray')
+plt.imshow(np.round(val_preds[index].reshape(SIZE, SIZE)), cmap='gray')
 
 
 def IOU(x, y):
@@ -102,8 +104,7 @@ def prob_to_rles(x, cutoff=0.5):
         yield rle_encoding(lab_img == i)
 
 preds = model.predict(x_test)
-preds = (preds > 0.5).astype(np.uint8)
-
+preds = np.round(preds)
 preds_test_upsampled = []
 for i in range(len(preds)):
     preds_test_upsampled.append(resize(np.squeeze(preds[i]),
@@ -122,8 +123,9 @@ for n, id_ in enumerate(test_ids):
 sub = pd.DataFrame()
 sub['ImageId'] = new_test_ids
 sub['EncodedPixels'] = pd.Series(rles).apply(lambda x: ' '.join(str(y) for y in x))
-sub.to_csv('sub-dsbowl2018-1.csv', index=False)
+sub.to_csv('sub.csv', index=False)
 
 
-plt.imshow(x_test[5].reshape(128,128, 3))
-plt.imshow(preds[5].reshape(128,128), cmap='gray')
+index = 50
+plt.imshow(x_test[index])
+plt.imshow(preds_test_upsampled[index], cmap='gray')

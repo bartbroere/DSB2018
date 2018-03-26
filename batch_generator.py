@@ -109,5 +109,3 @@ class BatchGenerator(object):
     def generate_test_data(self):
 
         return self.x_test
-
-
