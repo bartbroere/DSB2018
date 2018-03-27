@@ -4,6 +4,9 @@ import numpy as np
 from tqdm import tqdm
 from skimage.io import imread
 from skimage.transform import resize
+from skimage.color import rgb2gray
+
+#t=imread('/home/sander/kaggle/stage1_test/0e132f71c8b4875c3c2dd7a22997468a3e842b46aa9bd47cf7b0e8b7d63f0925/images/0e132f71c8b4875c3c2dd7a22997468a3e842b46aa9bd47cf7b0e8b7d63f0925.png')
 
 
 class BatchGenerator(object):
@@ -38,8 +41,10 @@ class BatchGenerator(object):
         print('Getting and resizing train images ... ')
         for n, id_ in tqdm(enumerate(train_ids), total=len(train_ids)):
             path = data_dir + id_
-            img = imread(path + '/images/' + id_ + '.png')[:, :, :self.channels]
+            img = imread(path + '/images/' + id_ + '.png')
+            img = rgb2gray(img)
             img = resize(img, (self.height, self.width), mode='constant', preserve_range=True)
+            img = img.reshape([self.height, self.width, 1])
             images[n] = img
             mask = np.zeros((self.height, self.width, 1), dtype=np.bool)
             for mask_file in next(os.walk(path + '/masks/'))[2]:
@@ -64,9 +69,11 @@ class BatchGenerator(object):
         sys.stdout.flush()
         for n, id_ in tqdm(enumerate(test_ids), total=len(test_ids)):
             path = data_dir + id_
-            img = imread(path + '/images/' + id_ + '.png')[:, :, :self.channels]
+            img = imread(path + '/images/' + id_ + '.png')
             sizes_test.append([img.shape[0], img.shape[1]])
             img = resize(img, (self.height, self.width), mode='constant', preserve_range=True)
+            img = rgb2gray(img)
+            img = img.reshape([self.height, self.width, 1])
             x_test[n] = img
 
         return x_test, test_ids, sizes_test

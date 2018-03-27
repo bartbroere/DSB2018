@@ -16,7 +16,7 @@ SIZE = 256
 
 batchgen = BatchGenerator(height=SIZE,
                           width=SIZE,
-                          channels=3,
+                          channels=1,
                           data_dir_train='stage1_train/',
                           data_dir_test='stage1_test/',
                           submission_run=True)
@@ -29,14 +29,14 @@ print(x_train.shape)
 print(x_val.shape)
 print(x_test.shape)
 
-model = NeuralNet(SIZE, SIZE, batchgen)
+model = NeuralNet(SIZE, SIZE, 1, batchgen)
 
 #model.load_weights('/home/sander/kaggle/models/neural_net500.ckpt')
 
-loss_list, val_loss_list, val_iou_list = model.train(num_steps=2000,
+loss_list, val_loss_list, val_iou_list = model.train(num_steps=1000,
              batch_size=32,
              dropout_rate=0,
-             lr=.0001,
+             lr=.001,
              decay=1,
              checkpoint='models/neural_net')
 
@@ -52,9 +52,9 @@ plt.show()
 
 x_val, y_val = batchgen.generate_val_data()
 val_preds = model.predict(x_val)
-index = 1
+index = 5
 
-plt.imshow(x_val[index].reshape(SIZE, SIZE, 3))
+plt.imshow(x_val[index].reshape(SIZE, SIZE))
 plt.imshow(y_val[index].reshape(SIZE, SIZE))
 plt.imshow(val_preds[index].reshape(SIZE, SIZE), cmap='gray')
 plt.imshow(np.round(val_preds[index].reshape(SIZE, SIZE)), cmap='gray')
@@ -126,6 +126,6 @@ sub['EncodedPixels'] = pd.Series(rles).apply(lambda x: ' '.join(str(y) for y in 
 sub.to_csv('sub.csv', index=False)
 
 
-index = 50
+index = 1
 plt.imshow(x_test[index])
 plt.imshow(preds_test_upsampled[index], cmap='gray')

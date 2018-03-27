@@ -20,6 +20,7 @@ def Conv2D(x, filters, kernel_size, stride):
                             strides=stride,
                             activation=tf.nn.relu,
                             kernel_initializer=tf.keras.initializers.he_normal(),
+                            kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
                             padding='same')
 
 
@@ -41,7 +42,7 @@ def augment_images(images):
 
 class NeuralNet(object):
 
-    def __init__(self, height, width, batchgen):
+    def __init__(self, height, width, channels, batchgen):
 
         self.batchgen = batchgen
 
@@ -49,7 +50,7 @@ class NeuralNet(object):
 
         self.session = tf.Session()  # config=tf.ConfigProto(log_device_placement=True)
 
-        self.x = tf.placeholder(dtype=tf.float32, shape=[None, height, width, 3], name='input')
+        self.x = tf.placeholder(dtype=tf.float32, shape=[None, height, width, channels], name='input')
         self.x = tf.map_fn(lambda img: tf.image.per_image_standardization(img), self.x)
 
         self.training_mode = tf.placeholder(dtype=tf.bool, shape=[], name='training_mode')
