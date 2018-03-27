@@ -31,6 +31,7 @@ def UpConv2D(x, filters, kernel_size, stride):
                                       strides=stride,
                                       activation=tf.nn.relu,
                                       kernel_initializer=tf.keras.initializers.he_normal(),
+                                      kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
                                       padding='same')
 
 
@@ -110,9 +111,11 @@ class NeuralNet(object):
 
         return loss_list, val_loss_list, val_iou_list
 
+
     def load_weights(self, checkpoint):
 
         self.saver.restore(self.session, checkpoint)
+
 
     def predict(self, x):
 
@@ -174,6 +177,7 @@ class NeuralNet(object):
                                 strides=1,
                                 activation=tf.nn.sigmoid,
                                 kernel_initializer=tf.keras.initializers.he_normal(),
+                                kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
                                 padding='same')
 
     def MaskRCNN(self, x):

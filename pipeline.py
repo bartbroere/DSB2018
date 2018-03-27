@@ -1,3 +1,6 @@
+import os
+os.chdir('/home/sander/datascience/DSB2018/DSB2018')
+
 import numpy as np
 import matplotlib.pyplot as plt
 from skimage.morphology import label
@@ -19,12 +22,14 @@ batchgen = BatchGenerator(height=SIZE,
                           channels=1,
                           data_dir_train='stage1_train/',
                           data_dir_test='stage1_test/',
-                          submission_run=True)
+                          submission_run=False)
 
-x_train = batchgen.x_train
+x_train, y_train = batchgen.x_train, batchgen.y_train
 x_val = batchgen.x_val
 x_test, test_ids, sizes_test = batchgen.x_test
 
+
+#plt.imshow(x_test[5].reshape([SIZE, SIZE]), cmap='gray')
 print(x_train.shape)
 print(x_val.shape)
 print(x_test.shape)
@@ -33,10 +38,10 @@ model = NeuralNet(SIZE, SIZE, 1, batchgen)
 
 #model.load_weights('/home/sander/kaggle/models/neural_net500.ckpt')
 
-loss_list, val_loss_list, val_iou_list = model.train(num_steps=1000,
+loss_list, val_loss_list, val_iou_list = model.train(num_steps=2000,
              batch_size=32,
              dropout_rate=0,
-             lr=.001,
+             lr=.0001,
              decay=1,
              checkpoint='models/neural_net')
 
@@ -52,7 +57,7 @@ plt.show()
 
 x_val, y_val = batchgen.generate_val_data()
 val_preds = model.predict(x_val)
-index = 5
+index = 1
 
 plt.imshow(x_val[index].reshape(SIZE, SIZE))
 plt.imshow(y_val[index].reshape(SIZE, SIZE))
@@ -97,7 +102,6 @@ def rle_encoding(x):
         prev = b
     return run_lengths
 
-
 def prob_to_rles(x, cutoff=0.5):
     lab_img = label(x > cutoff)
     for i in range(1, lab_img.max() + 1):
@@ -127,5 +131,5 @@ sub.to_csv('sub.csv', index=False)
 
 
 index = 1
-plt.imshow(x_test[index])
+plt.imshow(resize(np.squeeze(preds[index]), (sizes_test[index][0], sizes_test[index][1]), mode='constant', preserve_range=True))
 plt.imshow(preds_test_upsampled[index], cmap='gray')

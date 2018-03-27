@@ -4,9 +4,7 @@ import numpy as np
 from tqdm import tqdm
 from skimage.io import imread
 from skimage.transform import resize
-from skimage.color import rgb2gray
-
-#t=imread('/home/sander/kaggle/stage1_test/0e132f71c8b4875c3c2dd7a22997468a3e842b46aa9bd47cf7b0e8b7d63f0925/images/0e132f71c8b4875c3c2dd7a22997468a3e842b46aa9bd47cf7b0e8b7d63f0925.png')
+from skimage.color import rgb2gray, rgba2rgb
 
 
 class BatchGenerator(object):
@@ -19,12 +17,12 @@ class BatchGenerator(object):
 
         self.x_train, self.y_train = self.read_train_data(data_dir_train)
         self.shuffle()
+        self.x_val, self.y_val = self.x_train[:100], self.y_train[:100]
 
-        if submission_run:
-           self.x_val, self.y_val = self.x_train, self.y_train
-        else:
-            self.x_val, self.y_val = self.x_train[:100], self.y_train[:100]
-            self.x_train, self.y_train = self.x_train[100:], self.y_train[100:]
+
+        # In we're not in submission mode we won't train on the validation data
+        if not submission_run:
+           self.x_train, self.y_train = self.x_train[100:], self.y_train[100:]
 
         self.x_test = self.read_test_data(data_dir_test)
 
@@ -34,17 +32,14 @@ class BatchGenerator(object):
     def read_train_data(self, data_dir):
 
         train_ids = next(os.walk(data_dir))[1]
-        images = np.zeros((len(train_ids), self.height, self.width, self.channels), dtype=np.uint8)
+        images = np.zeros((len(train_ids), self.height, self.width, self.channels), dtype=np.float64)
         labels = np.zeros((len(train_ids), self.height, self.width, 1), dtype=np.bool)
         sys.stdout.flush()
 
         print('Getting and resizing train images ... ')
         for n, id_ in tqdm(enumerate(train_ids), total=len(train_ids)):
             path = data_dir + id_
-            img = imread(path + '/images/' + id_ + '.png')
-            img = rgb2gray(img)
-            img = resize(img, (self.height, self.width), mode='constant', preserve_range=True)
-            img = img.reshape([self.height, self.width, 1])
+            img, _ = self.read_image(path + '/images/' + id_ + '.png')
             images[n] = img
             mask = np.zeros((self.height, self.width, 1), dtype=np.bool)
             for mask_file in next(os.walk(path + '/masks/'))[2]:
@@ -57,28 +52,39 @@ class BatchGenerator(object):
         x_train = images
         y_train = labels
 
-        return x_train, y_train
+        return x_train, y_train.astype(np.float64)
 
 
     def read_test_data(self, data_dir):
 
         test_ids = next(os.walk(data_dir))[1]
-        x_test = np.zeros((len(test_ids), self.height, self.width, self.channels), dtype=np.uint8)
+        x_test = np.zeros((len(test_ids), self.height, self.width, self.channels), dtype=np.float64)
         sizes_test = []
         print('Getting and resizing test images ... ')
         sys.stdout.flush()
         for n, id_ in tqdm(enumerate(test_ids), total=len(test_ids)):
             path = data_dir + id_
-            img = imread(path + '/images/' + id_ + '.png')
-            sizes_test.append([img.shape[0], img.shape[1]])
-            img = resize(img, (self.height, self.width), mode='constant', preserve_range=True)
-            img = rgb2gray(img)
-            img = img.reshape([self.height, self.width, 1])
+            img, original_size = self.read_image(path + '/images/' + id_ + '.png')
+            sizes_test.append(original_size)
             x_test[n] = img
 
         return x_test, test_ids, sizes_test
 
-        
+
+    def read_image(self, path):
+
+        img = imread(path)
+        try:
+            img = rgb2gray(rgba2rgb(img))
+        except:
+            img = rgb2gray(img)
+
+        original_size = (img.shape[0], img.shape[1])
+        img = resize(img, (self.height, self.width), mode='constant', preserve_range=True)
+
+        return img.reshape([self.height, self.width, self.channels]), original_size
+
+
     def shuffle(self):
 
         indices = np.random.permutation(len(self.x_train))
