@@ -21,6 +21,7 @@ def Conv2D(x, filters, kernel_size, stride):
                             activation=tf.nn.relu,
                             kernel_initializer=tf.keras.initializers.he_normal(),
                             kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
+                            activity_regularizer=tf.keras.regularizers.l2(l=0.01),
                             padding='same')
 
 
@@ -32,16 +33,8 @@ def UpConv2D(x, filters, kernel_size, stride):
                                       activation=tf.nn.relu,
                                       kernel_initializer=tf.keras.initializers.he_normal(),
                                       kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
+                                      activity_regularizer=tf.keras.regularizers.l2(l=0.01),
                                       padding='same')
-
-
-def flip_horizontal(images):
-    return tf.map_fn(lambda img: tf.image.flip_left_right(img), images)
-
-
-
-def flip_vertical(images):
-    return tf.map_fn(lambda img: tf.image.flip_up_down(img), images)
 
 
 class NeuralNet(object):
@@ -63,8 +56,12 @@ class NeuralNet(object):
 
         self.label = tf.placeholder(dtype=tf.float32, shape=[None, height, width, 1])
 
-        self.loss = tf.reduce_mean(tf.losses.mean_squared_error(self.label, self.prediction))
+        #self.loss = tf.reduce_mean(tf.losses.mean_squared_error(self.label, self.prediction))
+        self.loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+                                    labels=self.label,
+                                    logits=self.prediction))
 
+        self.prediction = tf.nn.sigmoid(self.prediction)
         self.lr = tf.placeholder(tf.float32)
         self.optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
         self.train_step = self.optimizer.minimize(self.loss)
@@ -106,7 +103,7 @@ class NeuralNet(object):
                 print('')
                 val_iou_list.append(self.validate())
 
-                if step > 0 and step % 100 == 0:
+                if step > 0 and step % 500 == 0:
                     self.saver.save(self.session, checkpoint + str(step) + '.ckpt')
                     print('Saved to {}'.format(checkpoint + str(step) + '.ckpt'))
 
@@ -127,7 +124,7 @@ class NeuralNet(object):
     def UNET(self, x, dropout_rate):
 
         # Convolutional layers
-        filter_size = 4
+        filter_size = 16
 
         conv1 = Conv2D(x, filter_size, 3, 1)
         conv1 = Conv2D(conv1, filter_size, 3, 1)
@@ -176,9 +173,10 @@ class NeuralNet(object):
                                 filters=1,
                                 kernel_size=1,
                                 strides=1,
-                                activation=tf.nn.sigmoid,
+                                activation=None,#tf.nn.sigmoid,
                                 kernel_initializer=tf.keras.initializers.he_normal(),
                                 kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
+                                activity_regularizer=tf.keras.regularizers.l2(l=0.01),
                                 padding='same')
 
     def MaskRCNN(self, x):
