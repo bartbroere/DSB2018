@@ -35,10 +35,13 @@ def UpConv2D(x, filters, kernel_size, stride):
                                       padding='same')
 
 
-def augment_images(images):
-    images = tf.map_fn(lambda img: tf.image.random_flip_left_right(img), images)
-    images = tf.map_fn(lambda img: tf.image.random_flip_up_down(img), images)
-    return images
+def flip_horizontal(images):
+    return tf.map_fn(lambda img: tf.image.flip_left_right(img), images)
+
+
+
+def flip_vertical(images):
+    return tf.map_fn(lambda img: tf.image.flip_up_down(img), images)
 
 
 class NeuralNet(object):
@@ -54,18 +57,12 @@ class NeuralNet(object):
         self.x = tf.placeholder(dtype=tf.float32, shape=[None, height, width, channels], name='input')
         self.x = tf.map_fn(lambda img: tf.image.per_image_standardization(img), self.x)
 
-        self.training_mode = tf.placeholder(dtype=tf.bool, shape=[], name='training_mode')
-
-        self.x = tf.cond(tf.equal(self.training_mode, True),
-                         true_fn=lambda: augment_images(self.x),
-                         false_fn=lambda: self.x)
-
-
         self.dropout_rate = tf.placeholder(tf.float32)
 
         self.prediction = self.UNET(self.x, self.dropout_rate)
 
         self.label = tf.placeholder(dtype=tf.float32, shape=[None, height, width, 1])
+
         self.loss = tf.reduce_mean(tf.losses.mean_squared_error(self.label, self.prediction))
 
         self.lr = tf.placeholder(tf.float32)
@@ -85,16 +82,20 @@ class NeuralNet(object):
         for step in range(num_steps):
 
             x_batch, y_batch = self.batchgen.generate_batch(batch_size)
-            feed_dict = {self.x: x_batch, self.label: y_batch,
-                         self.dropout_rate: dropout_rate, self.lr: lr,
-                         self.training_mode: True}
+
+            feed_dict = {self.x: x_batch,
+                         self.label: y_batch,
+                         self.dropout_rate: dropout_rate,
+                         self.lr: lr
+                         }
+
             loss_, _ = self.session.run([self.loss, self.train_step], feed_dict=feed_dict)
             lr *= decay
 
             if step % 100 == 0:
 
                 x_batch, y_batch = self.batchgen.generate_val_data()
-                feed_dict = {self.x: x_batch, self.label: y_batch, self.dropout_rate: 0, self.training_mode: False}
+                feed_dict = {self.x: x_batch, self.label: y_batch, self.dropout_rate: 0}
                 val_loss = self.session.run([self.loss], feed_dict=feed_dict)
                 val_loss_list.append(val_loss)
                 loss_list.append(loss_)
@@ -120,13 +121,13 @@ class NeuralNet(object):
     def predict(self, x):
 
         return self.session.run([self.prediction], {self.x: x,
-                                                    self.dropout_rate: 0,
-                                                    self.training_mode: False})[0]
+                                                    self.dropout_rate: 0
+                                                   })[0]
 
     def UNET(self, x, dropout_rate):
 
         # Convolutional layers
-        filter_size = 8
+        filter_size = 4
 
         conv1 = Conv2D(x, filter_size, 3, 1)
         conv1 = Conv2D(conv1, filter_size, 3, 1)

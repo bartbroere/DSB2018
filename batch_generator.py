@@ -38,6 +38,7 @@ class BatchGenerator(object):
 
         print('Getting and resizing train images ... ')
         for n, id_ in tqdm(enumerate(train_ids), total=len(train_ids)):
+
             path = data_dir + id_
             img, _ = self.read_image(path + '/images/' + id_ + '.png')
             images[n] = img
@@ -108,6 +109,7 @@ class BatchGenerator(object):
                 self.shuffle()
                 self.cursor = 0
 
+            x, y = self.augment(x, y)
             x_batch.append(x)
             y_batch.append(y)
 
@@ -122,3 +124,16 @@ class BatchGenerator(object):
     def generate_test_data(self):
 
         return self.x_test
+
+
+    def augment(self, x, y):
+
+        flip_hor = np.random.rand()
+        flip_ver = np.random.rand()
+        if flip_hor > .5:
+            x = np.flip(x, axis=1)
+            y = np.flip(y, axis=1)
+        if flip_ver > .5:
+            x = np.flip(x, axis=0)
+            y = np.flip(y, axis=0)
+        return x, y
