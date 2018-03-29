@@ -1,5 +1,5 @@
-import os
-os.chdir('/home/sander/datascience/DSB2018/DSB2018')
+#import os
+#os.chdir('/home/sander/datascience/DSB2018/DSB2018')
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,8 +7,8 @@ from skimage.morphology import label
 from skimage.transform import resize
 import pandas as pd
 
-from neural_net import NeuralNet
-from batch_generator import BatchGenerator
+from tensorflow_implementation.neural_net import NeuralNet
+from tensorflow_implementation.batch_generator import BatchGenerator
 
 
 ###########################
@@ -39,9 +39,9 @@ model = NeuralNet(SIZE, SIZE, 1, batchgen)
 
 #model.load_weights('/home/sander/kaggle/models/neural_net2500.ckpt')
 
-loss_list, val_loss_list, val_iou_list = model.train(num_steps=2000,
-             batch_size=32,
-             dropout_rate=0,
+loss_list, val_loss_list, val_iou_list = model.train(num_steps=4000,
+             batch_size=64,
+             dropout_rate=0.5,
              lr=.0001,
              decay=1,
              checkpoint='models/neural_net')
@@ -60,8 +60,8 @@ x_val, y_val = batchgen.generate_val_data()
 val_preds = model.predict(x_val)
 index = 2
 
-plt.imshow(x_val[index].reshape(SIZE, SIZE))
-plt.imshow(y_val[index].reshape(SIZE, SIZE))
+plt.imshow(x_val[index].reshape(SIZE, SIZE), cmap='gray')
+plt.imshow(y_val[index].reshape(SIZE, SIZE), cmap='gray')
 plt.imshow(val_preds[index].reshape(SIZE, SIZE), cmap='gray')
 plt.imshow(np.round(val_preds[index].reshape(SIZE, SIZE)), cmap='gray')
 

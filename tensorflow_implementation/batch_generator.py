@@ -91,7 +91,7 @@ class BatchGenerator(object):
         indices = np.random.permutation(len(self.x_train))
         self.x_train = self.x_train[indices]
         self.y_train = self.y_train[indices]
-        print("Every day I'm shuffling.")
+        #print("Every day I'm shuffling.")
 
 
     def generate_batch(self, batch_size):
