@@ -13,30 +13,6 @@ def IOU(x, y):
         return 0
 
 
-def Conv2D(x, filters, kernel_size, stride):
-    return tf.layers.conv2d(inputs=x,
-                            filters=filters,
-                            kernel_size=kernel_size,
-                            strides=stride,
-                            activation=tf.nn.relu,
-                            kernel_initializer=tf.keras.initializers.he_normal(),
-                            kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
-                            activity_regularizer=tf.keras.regularizers.l2(l=0.01),
-                            padding='same')
-
-
-def UpConv2D(x, filters, kernel_size, stride):
-    return tf.layers.conv2d_transpose(inputs=x,
-                                      filters=filters,
-                                      kernel_size=kernel_size,
-                                      strides=stride,
-                                      activation=tf.nn.relu,
-                                      kernel_initializer=tf.keras.initializers.he_normal(),
-                                      kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
-                                      activity_regularizer=tf.keras.regularizers.l2(l=0.01),
-                                      padding='same')
-
-
 class NeuralNet(object):
 
     def __init__(self, height, width, channels, batchgen):
@@ -69,6 +45,93 @@ class NeuralNet(object):
         self.session.run(self.init_op)
         self.saver = tf.train.Saver(max_to_keep=None,
                                     name='checkpoint_saver')
+
+    def Conv2D(self, x, filters, kernel_size, stride):
+        return tf.layers.conv2d(inputs=x,
+                                filters=filters,
+                                kernel_size=kernel_size,
+                                strides=stride,
+                                activation=tf.nn.relu,
+                                kernel_initializer=tf.keras.initializers.he_normal(),
+                                kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
+                                activity_regularizer=tf.keras.regularizers.l2(l=0.01),
+                                padding='same')
+
+
+
+    def UpConv2D(self, x, filters, kernel_size, stride):
+        return tf.layers.conv2d_transpose(inputs=x,
+                                          filters=filters,
+                                          kernel_size=kernel_size,
+                                          strides=stride,
+                                          activation=tf.nn.relu,
+                                          kernel_initializer=tf.keras.initializers.he_normal(),
+                                          kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
+                                          activity_regularizer=tf.keras.regularizers.l2(l=0.01),
+                                          padding='same')
+
+
+
+
+    def UNET(self, x, dropout_rate):
+
+        # Convolutional layers
+        filter_size = 32
+
+        conv1 = self.Conv2D(x, filter_size, 3, 1)
+        conv1 = self.Conv2D(conv1, filter_size, 3, 1)
+        pool1 = tf.layers.max_pooling2d(conv1, pool_size=2, strides=2)
+
+        conv2 = self.Conv2D(pool1, filter_size * 2, 3, 1)
+        conv2 = self.Conv2D(conv2, filter_size * 2, 3, 1)
+        pool2 = tf.layers.max_pooling2d(conv2, pool_size=2, strides=2)
+
+        conv3 = self.Conv2D(pool2, filter_size * 4, 3, 1)
+        conv3 = self.Conv2D(conv3, filter_size * 4, 3, 1)
+        pool3 = tf.layers.max_pooling2d(conv3, pool_size=2, strides=2)
+
+        conv4 = self.Conv2D(pool3, filter_size * 8, 3, 1)
+        conv4 = self.Conv2D(conv4, filter_size * 8, 3, 1)
+        dropout4 = tf.layers.dropout(conv4, rate=dropout_rate)
+        pool4 = tf.layers.max_pooling2d(dropout4, pool_size=2, strides=2)
+
+        conv5 = self.Conv2D(pool4, filter_size * 16, 3, 1)
+        conv5 = self.Conv2D(conv5, filter_size * 16, 3, 1)
+        dropout5 = tf.layers.dropout(conv5, rate=dropout_rate)
+
+        # Upconvolutional layers
+        upconv6 = self.UpConv2D(dropout5, filter_size * 8, 2, 2)
+        concat6 = tf.concat([dropout4, upconv6], axis=3)
+        conv6 = self.Conv2D(concat6, filter_size * 8, 3, 1)
+        conv6 = self.Conv2D(conv6, filter_size * 8, 3, 1)
+
+        upconv7 = self.UpConv2D(conv6, filter_size * 4, 2, 2)
+        concat7 = tf.concat([conv3, upconv7], axis=3)
+        conv7 = self.Conv2D(concat7, filter_size * 4, 3, 1)
+        conv7 = self.Conv2D(conv7, filter_size * 4, 3, 1)
+
+        upconv8 = self.UpConv2D(conv7, filter_size * 2, 2, 2)
+        concat8 = tf.concat([conv2, upconv8], axis=3)
+        conv8 = self.Conv2D(concat8, filter_size * 2, 3, 1)
+        conv8 = self.Conv2D(conv8, filter_size * 2, 3, 1)
+
+        upconv9 = self.UpConv2D(conv8, filter_size, 2, 2)
+        concat9 = tf.concat([conv1, upconv9], axis=3)
+        conv9 = self.Conv2D(concat9, filter_size, 3, 1)
+        conv9 = self.Conv2D(conv9, filter_size, 3, 1)
+        conv9 = self.Conv2D(conv9, 2, 3, 1)
+
+        return tf.layers.conv2d(inputs=conv9,
+                                filters=1,
+                                kernel_size=1,
+                                strides=1,
+                                activation=None,  # tf.nn.sigmoid,
+                                kernel_initializer=tf.keras.initializers.he_normal(),
+                                kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
+                                activity_regularizer=tf.keras.regularizers.l2(l=0.01),
+                                padding='same')
+
+
 
     def train(self, num_steps, batch_size, dropout_rate, lr, decay, checkpoint='models/neural_net'):
 
@@ -119,68 +182,7 @@ class NeuralNet(object):
 
         return self.session.run([self.prediction], {self.x: x,
                                                     self.dropout_rate: 0
-                                                   })[0]
-
-    def UNET(self, x, dropout_rate):
-
-        # Convolutional layers
-        filter_size = 16
-
-        conv1 = Conv2D(x, filter_size, 3, 1)
-        conv1 = Conv2D(conv1, filter_size, 3, 1)
-        pool1 = tf.layers.max_pooling2d(conv1, pool_size=2, strides=2)
-
-        conv2 = Conv2D(pool1, filter_size * 2, 3, 1)
-        conv2 = Conv2D(conv2, filter_size * 2, 3, 1)
-        pool2 = tf.layers.max_pooling2d(conv2, pool_size=2, strides=2)
-
-        conv3 = Conv2D(pool2, filter_size * 4, 3, 1)
-        conv3 = Conv2D(conv3, filter_size * 4, 3, 1)
-        pool3 = tf.layers.max_pooling2d(conv3, pool_size=2, strides=2)
-
-        conv4 = Conv2D(pool3, filter_size * 8, 3, 1)
-        conv4 = Conv2D(conv4, filter_size * 8, 3, 1)
-        dropout4 = tf.layers.dropout(conv4, rate=dropout_rate)
-        pool4 = tf.layers.max_pooling2d(dropout4, pool_size=2, strides=2)
-
-        conv5 = Conv2D(pool4, filter_size * 16, 3, 1)
-        conv5 = Conv2D(conv5, filter_size * 16, 3, 1)
-        dropout5 = tf.layers.dropout(conv5, rate=dropout_rate)
-
-        # Upconvolutional layers
-        upconv6 = UpConv2D(dropout5, filter_size * 8, 2, 2)
-        concat6 = tf.concat([dropout4, upconv6], axis=3)
-        conv6 = Conv2D(concat6, filter_size * 8, 3, 1)
-        conv6 = Conv2D(conv6, filter_size * 8, 3, 1)
-
-        upconv7 = UpConv2D(conv6, filter_size * 4, 2, 2)
-        concat7 = tf.concat([conv3, upconv7], axis=3)
-        conv7 = Conv2D(concat7, filter_size * 4, 3, 1)
-        conv7 = Conv2D(conv7, filter_size * 4, 3, 1)
-
-        upconv8 = UpConv2D(conv7, filter_size * 2, 2, 2)
-        concat8 = tf.concat([conv2, upconv8], axis=3)
-        conv8 = Conv2D(concat8, filter_size * 2, 3, 1)
-        conv8 = Conv2D(conv8, filter_size * 2, 3, 1)
-
-        upconv9 = UpConv2D(conv8, filter_size, 2, 2)
-        concat9 = tf.concat([conv1, upconv9], axis=3)
-        conv9 = Conv2D(concat9, filter_size, 3, 1)
-        conv9 = Conv2D(conv9, filter_size, 3, 1)
-        conv9 = Conv2D(conv9, 2, 3, 1)
-
-        return tf.layers.conv2d(inputs=conv9,
-                                filters=1,
-                                kernel_size=1,
-                                strides=1,
-                                activation=None,#tf.nn.sigmoid,
-                                kernel_initializer=tf.keras.initializers.he_normal(),
-                                kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
-                                activity_regularizer=tf.keras.regularizers.l2(l=0.01),
-                                padding='same')
-
-    def MaskRCNN(self, x):
-        pass
+                                                    })[0]
 
 
     def validate(self):

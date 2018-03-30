@@ -41,7 +41,7 @@ model = NeuralNet(SIZE, SIZE, 1, batchgen)
 
 loss_list, val_loss_list, val_iou_list = model.train(num_steps=4000,
              batch_size=64,
-             dropout_rate=0.5,
+             dropout_rate=0,
              lr=.0001,
              decay=1,
              checkpoint='models/neural_net')
@@ -58,7 +58,7 @@ plt.show()
 
 x_val, y_val = batchgen.generate_val_data()
 val_preds = model.predict(x_val)
-index = 2
+index = 1
 
 plt.imshow(x_val[index].reshape(SIZE, SIZE), cmap='gray')
 plt.imshow(y_val[index].reshape(SIZE, SIZE), cmap='gray')
@@ -128,7 +128,7 @@ for n, id_ in enumerate(test_ids):
 sub = pd.DataFrame()
 sub['ImageId'] = new_test_ids
 sub['EncodedPixels'] = pd.Series(rles).apply(lambda x: ' '.join(str(y) for y in x))
-sub.to_csv('sub.csv', index=False)
+sub.to_csv('sub32.csv', index=False)
 
 
 index = 1
