@@ -15,7 +15,7 @@ def IOU(x, y):
 
 class NeuralNet(object):
 
-    def __init__(self, height, width, channels, batchgen):
+    def __init__(self, height, width, channels, mirror, batchgen):
 
         self.batchgen = batchgen
 
@@ -23,7 +23,7 @@ class NeuralNet(object):
 
         self.session = tf.Session()  # config=tf.ConfigProto(log_device_placement=True)
 
-        self.x = tf.placeholder(dtype=tf.float32, shape=[None, height, width, channels], name='input')
+        self.x = tf.placeholder(dtype=tf.float32, shape=[None, height+mirror, width+mirror, channels], name='input')
         self.x = tf.map_fn(lambda img: tf.image.per_image_standardization(img), self.x)
 
         self.dropout_rate = tf.placeholder(tf.float32)
@@ -46,7 +46,7 @@ class NeuralNet(object):
         self.saver = tf.train.Saver(max_to_keep=None,
                                     name='checkpoint_saver')
 
-    def Conv2D(self, x, filters, kernel_size, stride):
+    def Conv2D(self, x, filters, kernel_size, stride, padding='same'):
         return tf.layers.conv2d(inputs=x,
                                 filters=filters,
                                 kernel_size=kernel_size,
@@ -55,11 +55,11 @@ class NeuralNet(object):
                                 kernel_initializer=tf.keras.initializers.he_normal(),
                                 kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
                                 activity_regularizer=tf.keras.regularizers.l2(l=0.01),
-                                padding='same')
+                                padding=padding)
 
 
 
-    def UpConv2D(self, x, filters, kernel_size, stride):
+    def UpConv2D(self, x, filters, kernel_size, stride, padding='same'):
         return tf.layers.conv2d_transpose(inputs=x,
                                           filters=filters,
                                           kernel_size=kernel_size,
@@ -68,7 +68,7 @@ class NeuralNet(object):
                                           kernel_initializer=tf.keras.initializers.he_normal(),
                                           kernel_regularizer=tf.keras.regularizers.l2(l=0.01),
                                           activity_regularizer=tf.keras.regularizers.l2(l=0.01),
-                                          padding='same')
+                                          padding=padding)
 
 
 
@@ -76,10 +76,10 @@ class NeuralNet(object):
     def UNET(self, x, dropout_rate):
 
         # Convolutional layers
-        filter_size = 32
-
+        filter_size = 24
         conv1 = self.Conv2D(x, filter_size, 3, 1)
         conv1 = self.Conv2D(conv1, filter_size, 3, 1)
+
         pool1 = tf.layers.max_pooling2d(conv1, pool_size=2, strides=2)
 
         conv2 = self.Conv2D(pool1, filter_size * 2, 3, 1)
@@ -166,7 +166,7 @@ class NeuralNet(object):
                 print('')
                 val_iou_list.append(self.validate())
 
-                if step > 0 and step % 500 == 0:
+                if step > 0 and step+1 % 500 == 0:
                     self.saver.save(self.session, checkpoint + str(step) + '.ckpt')
                     print('Saved to {}'.format(checkpoint + str(step) + '.ckpt'))
 
