@@ -2,15 +2,42 @@ import numpy as np
 import keras
 import os
 from PIL import Image, ImageOps
-from scipy.ndimage.filters import uniform_filter
+# from scipy.ndimage.filters import uniform_filter
 from scipy.ndimage import affine_transform
+
+def sample_x_y(samples, path, x_shape=(256,256), y_shape=(256,256), mirror_edges=0):
+
+    # TODO: Shuffle
+
+    out_shape = (x_shape[0] + mirror_edges, x_shape[1] + mirror_edges)
+
+    X = np.empty((len(samples), *out_shape, 1))
+    Y = np.empty((len(samples), *y_shape, 1))
+
+    for i, sample in enumerate(samples):
+        with Image.open(os.path.join(path, sample, 'images', '{}.png'.format(sample))) as x_img:
+            x_img = x_img.convert(mode='L')
+            x_img = ImageOps.autocontrast(x_img)
+            x_arr = np.array(x_img) / 255
+            x_arr = np.expand_dims(x_arr, axis=2)
+            X[i,] = x_arr
+        with Image.open(os.path.join(path, sample, 'mask', '{}.png'.format(sample))) as y_img:
+            y_arr = np.array(y_img) / 255
+            y_arr = np.expand_dims(y_arr, axis=2)
+            Y = y_arr
+
+    return X, Y, samples
+
 
 class DataGenerator(keras.utils.Sequence):
     'Generates data for Keras'
-    def __init__(self, list_IDs, path, batch_size=4, dim=(256,256), n_channels=1, shuffle=True,
+    def __init__(self, list_IDs, path, batch_size=4, dim=(256,256), out_dim=None, n_channels=1, shuffle=True,
                  rotation=False, flipping=False, mirror_edges=False):
         'Initialization'
         self.dim = dim
+        self.out_dim = out_dim
+        if self.out_dim is None:
+            self.out_dim = dim
         self.batch_size = batch_size
         self.list_IDs = list_IDs
         self.n_channels = n_channels
@@ -49,9 +76,11 @@ class DataGenerator(keras.utils.Sequence):
         # Initialization
         if self.mirror_edges:
             out_shape = (self.dim[0] + self.mirror_edges, self.dim[0] + self.mirror_edges)
+        else:
+            out_shape = self.dim
 
         X = np.empty((self.batch_size, *out_shape, self.n_channels))
-        Y = np.empty((self.batch_size, *self.dim, self.n_channels))
+        Y = np.empty((self.batch_size, *self.out_dim, self.n_channels))
 
         if self.rotation:
             rot = np.random.choice([0, 90, 180, 270], self.batch_size)
@@ -84,7 +113,7 @@ class DataGenerator(keras.utils.Sequence):
                 X[i,] = x_arr
 
             with Image.open(os.path.join(self.path, sample, 'mask', '{}.png'.format(sample))) as y_img:
-                y_img = y_img.resize(self.dim)
+                y_img = y_img.resize(self.out_dim)
                 y_img = y_img.rotate(rot[i])
                 if flip[0,i]:
                     y_img = y_img.transpose(Image.FLIP_LEFT_RIGHT)
@@ -95,6 +124,21 @@ class DataGenerator(keras.utils.Sequence):
                 Y[i,] = y_arr
 
         return X, Y
+
+
+class PredictGenerator(DataGenerator):
+    def __init__(self, list_IDs, path, batch_size=4, dim=(256,256), n_channels=1, mirror_edges=False):
+        self.dim = dim
+        self.batch_size = batch_size
+        self.list_IDs = list_IDs
+        self.n_channels = n_channels
+        self.shuffle = False
+        self.path = path
+        self.rotation = False
+        self.flipping = False
+        self.mirror_edges = mirror_edges
+        self.on_epoch_end()
+
 
 if __name__ == '__main__':
     training = os.listdir('img')[0:8]
