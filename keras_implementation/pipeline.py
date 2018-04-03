@@ -56,10 +56,7 @@ def mean_iou(y_true, y_pred):
     return score
 
 
-def create_model():
-    filter_size = 8
-    drop_rate = .5
-
+def create_model(filter_size = 12, drop_rate=.25):
     img_input = Input(shape=(256,256,1))
 
     conv1 = Conv2D(filters=filter_size, kernel_size=3, strides=1, activation='relu', padding='same')(img_input)
@@ -315,24 +312,28 @@ def create_model_valid():
 
 
 if __name__ == '__main__':
+    path_img = 'C:/Users/huubh/Dropbox/DSB'
     model_x2 = create_model()
     # model_x2 = create_inception_model()
     # model_x2 = create_model_valid()
-    labels = os.listdir('img')
-    training = labels[:600]
-    validation = labels[600:]
+    # labels = os.listdir('../img')
+    labels = os.listdir(path_img)
+    training = labels[:608]
+    validation = labels[608:]
     print(len(training))
     print(len(validation))
-    training_generator = generator.DataGenerator(training, 'img',
-                                                 rotation=True, flipping=True, batch_size = 10, dim=(256,256), out_dim=(256,256))
-    validation_generator = generator.DataGenerator(validation, 'img',
-                                                 rotation=True, flipping=True, batch_size = 10, dim=(256,256), out_dim=(256,256))
-    model_x2.fit_generator(generator=training_generator, validation_data=validation_generator, epochs=64)
+    training_generator = generator.DataGenerator(training, path_img,
+                                                 rotation=True, flipping=True, zoom=2, batch_size = 36, dim=(256,256))
+    validation_generator = generator.DataGenerator(validation, path_img,
+                                                 rotation=True, flipping=True, zoom=2, batch_size = 2, dim=(256,256))
+    model_x2.fit_generator(generator=training_generator, validation_data=validation_generator, epochs=36)
 
-    one_x, one_y, _ = generator.sample_x_y(['1b2bf5933b0fb82918d278983bee66e9532b53807c3638efd9af66d20a2bae88'], '/Users/HuCa/Dropbox/DSB')
-
-    y_pred = model_x2.predict(one_x)
-
-    one_y_pred = y_pred[0,:,:,0] > .5
-
-    plt.imsave('filename2.png', one_y_pred, cmap=cm.gray)
+    # prediction_ids = ['01d44a26f6680c42ba94c9bc6339228579a95d0e2695b149b7cc0c9592b21baf']
+    #
+    # prediction_generator = generator.PredictDataGenerator(prediction_ids, path_img)
+    # zz = model_x2.predict_generator(prediction_generator)
+    #
+    # out = generator.post_process_concat(prediction_ids, zz, threshold=1)
+    # one_y_pred = out['01d44a26f6680c42ba94c9bc6339228579a95d0e2695b149b7cc0c9592b21baf']
+    #
+    # plt.imsave('filename2.png', one_y_pred[0,:,:,0], cmap=cm.gray)
