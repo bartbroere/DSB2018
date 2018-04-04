@@ -2,14 +2,11 @@ import numpy as np
 import keras
 import os
 from PIL import Image, ImageOps
-# from scipy.ndimage.filters import uniform_filter
 from scipy.ndimage import affine_transform
 import random
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-import copy
 from scipy.misc import imresize
-
 
 
 def sample_x_y(samples, path, x_shape=(256,256), y_shape=(256,256), mirror_edges=0):
@@ -283,9 +280,6 @@ def plot_image_true_mask(label, out, path):
     plt.imshow(out_arr, cmap=cm.gray)
     fig.savefig('output_{}.png'.format(label))
     plt.close()
-
-
-
 
 if __name__ == '__main__':
     training = os.listdir('img')[0:8]
