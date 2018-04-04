@@ -5,6 +5,9 @@ from PIL import Image, ImageOps
 # from scipy.ndimage.filters import uniform_filter
 from scipy.ndimage import affine_transform
 import random
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+
 
 def sample_x_y(samples, path, x_shape=(256,256), y_shape=(256,256), mirror_edges=0):
 
@@ -93,13 +96,13 @@ class DataGenerator(keras.utils.Sequence):
 
 
         if self.zoom:
-            zoom_l = np.random.choice([True, False, False, False], self.batch_size)
+            zoom_l = np.random.choice([True, False, False], self.batch_size)
             zoom_o = [False] * self.batch_size
             for i, zo in enumerate(zoom_l):
                 if zo:
                     zoom_factor = random.uniform(1, 1/self.zoom)
                     size = np.floor(self.dim[0]*zoom_factor)
-                    x_co, y_co = np.random.randint(0, size, 2)
+                    x_co, y_co = np.random.randint(0, self.dim[0] - size, 2)
                     zoom_o[i] = (x_co, y_co, int(x_co + size), int(y_co + size))
 
         else:
@@ -127,8 +130,6 @@ class DataGenerator(keras.utils.Sequence):
                                              output_shape=out_shape, mode='mirror')
                 x_arr = np.expand_dims(x_arr, axis=2)
                 X[i,] = x_arr
-                if zoom_l[i]:
-                    x_img.save('{0}{1}_image.png'.format(sample, i))
 
             with Image.open(os.path.join(self.path, sample, 'mask', '{}.png'.format(sample))) as y_img:
                 y_img = y_img.resize(self.dim)
@@ -143,8 +144,6 @@ class DataGenerator(keras.utils.Sequence):
                 y_arr = np.array(y_img) / 255
                 y_arr = np.expand_dims(y_arr, axis=2)
                 Y[i,] = y_arr
-                if zoom_l[i]:
-                    y_img.save('{0}{1}_mask.png'.format(sample, i))
 
         return X, Y
 
@@ -161,6 +160,7 @@ class PredictDataGenerator(DataGenerator):
         self.path = path
         self.mirror_edges = mirror_edges
         self.on_epoch_end()
+        self.zoom = False
 
     def __len__(self):
         'Denotes the number of batches per epoch'
@@ -241,8 +241,37 @@ def post_process_predictions(arrays):
 def post_process_concat(ids, prediction, threshold=4):
     prediction_for_ids = dict.fromkeys(ids)
     for i, label in enumerate(ids):
-        prediction_for_ids[label] = post_process_predictions(prediction[i:i+8]) > threshold
+        print(8*i, 8*i+8)
+        prediction_for_ids[label] = post_process_predictions(prediction[(8*i):(8*i+8)]) > threshold
     return prediction_for_ids
+
+
+def plot_image_true_mask(label, out, path):
+    fig = plt.figure()
+    with Image.open(os.path.join(path, label, 'images', '{}.png'.format(label))) as x_img:
+        x_plot = x_img.convert(mode='L')
+        # x_arr = np.array(x_img)
+        plt.subplot(131)
+        plt.imshow(x_plot)
+
+    if os._exists(os.path.join(path, label, 'mask', '{}.png'.format(label))):
+        with Image.open(os.path.join(path, label, 'mask', '{}.png'.format(label))) as y_img:
+            # y_arr = np.array(y_img)
+            y_plot = y_img
+            plt.subplot(132)
+            plt.imshow(y_plot)
+    else:
+        print('no mask')
+
+    out_arr = out
+
+    plt.subplot(133)
+    plt.imshow(out_arr[0,:,:,0], cmap=cm.gray)
+    fig.savefig('output_{}.png'.format(label))
+    plt.close()
+
+
+
 
 if __name__ == '__main__':
     training = os.listdir('img')[0:8]
