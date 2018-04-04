@@ -7,6 +7,9 @@ from scipy.ndimage import affine_transform
 import random
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import copy
+from scipy.misc import imresize
+
 
 
 def sample_x_y(samples, path, x_shape=(256,256), y_shape=(256,256), mirror_edges=0):
@@ -242,8 +245,19 @@ def post_process_concat(ids, prediction, threshold=4):
     prediction_for_ids = dict.fromkeys(ids)
     for i, label in enumerate(ids):
         print(8*i, 8*i+8)
-        prediction_for_ids[label] = post_process_predictions(prediction[(8*i):(8*i+8)]) > threshold
+        d4_array = post_process_predictions(prediction[(8*i):(8*i+8)]) > threshold
+        prediction_for_ids[label] = d4_array[0,:,:,0]
     return prediction_for_ids
+
+
+def post_process_original_size(prediction_dict, path):
+    org_size_prediction_for_ids = dict.fromkeys([ids for ids in prediction_dict.keys()])
+    for label, pred in prediction_dict.items():
+        with Image.open(os.path.join(path, label, 'images', '{}.png'.format(label))) as x_img:
+            out_shape = np.array(x_img).shape
+            pred_as_int = np.array(pred, dtype=int)
+            org_size_prediction_for_ids[label] = imresize(pred_as_int,(out_shape[0],out_shape[1])) > (255/2)
+    return org_size_prediction_for_ids
 
 
 def plot_image_true_mask(label, out, path):
@@ -266,7 +280,7 @@ def plot_image_true_mask(label, out, path):
     out_arr = out
 
     plt.subplot(133)
-    plt.imshow(out_arr[0,:,:,0], cmap=cm.gray)
+    plt.imshow(out_arr, cmap=cm.gray)
     fig.savefig('output_{}.png'.format(label))
     plt.close()
 
