@@ -1,0 +1,8 @@
+keras
+numpy
+pillow
+pip-tools
+scikit-image
+scikit-learn
+tensorflow-gpu
+tqdm
