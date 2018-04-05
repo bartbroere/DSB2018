@@ -8,6 +8,7 @@ class Ensembleer(object):
 
     def __init__(self, classifier):
         """
+        Uses the classifier it is instantiated with to generate a weighted output of the two classifiers.
 
         :param classifier: a fit-transform object
         """
@@ -15,7 +16,7 @@ class Ensembleer(object):
 
     def fit(self, X, Y):
         """
-
+        Train the ensemble classifier.
 
         :param X: dict van id naar data
         :param Y: dict van id naar labeled mask
@@ -32,6 +33,7 @@ class Ensembleer(object):
 
     def transform(self, X):
         """
+        Apply the trained ensemble classifier to X.
 
         :param X: dict van id naar data
         :return: Y weighted labels
@@ -68,6 +70,7 @@ class Ensembleer(object):
 
 def uniform_data():
     """
+    Returns an aligned version of X and Y so fit-transform classes can use it.
 
     :return: X, Y aligned
     """
